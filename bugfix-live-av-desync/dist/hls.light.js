@@ -10521,7 +10521,7 @@ var stream_controller_StreamController = /*#__PURE__*/function (_BaseStreamContr
   function StreamController(hls, fragmentTracker) {
     var _this;
 
-    _this = _BaseStreamController.call(this, hls, events["default"].MEDIA_ATTACHED, events["default"].MEDIA_DETACHING, events["default"].MANIFEST_LOADING, events["default"].MANIFEST_PARSED, events["default"].LEVEL_LOADED, events["default"].LEVELS_UPDATED, events["default"].KEY_LOADED, events["default"].FRAG_LOADED, events["default"].FRAG_LOAD_EMERGENCY_ABORTED, events["default"].FRAG_PARSING_INIT_SEGMENT, events["default"].FRAG_PARSING_DATA, events["default"].FRAG_PARSED, events["default"].ERROR, events["default"].AUDIO_TRACK_SWITCHING, events["default"].AUDIO_TRACK_SWITCHED, events["default"].BUFFER_CREATED, events["default"].BUFFER_APPENDED, events["default"].BUFFER_FLUSHED, events["default"].INIT_PTS_FOUND) || this;
+    _this = _BaseStreamController.call(this, hls, events["default"].MEDIA_ATTACHED, events["default"].MEDIA_DETACHING, events["default"].MANIFEST_LOADING, events["default"].MANIFEST_PARSED, events["default"].LEVEL_LOADED, events["default"].LEVELS_UPDATED, events["default"].KEY_LOADED, events["default"].FRAG_LOADED, events["default"].FRAG_LOAD_EMERGENCY_ABORTED, events["default"].FRAG_PARSING_INIT_SEGMENT, events["default"].FRAG_PARSING_DATA, events["default"].FRAG_PARSED, events["default"].ERROR, events["default"].AUDIO_TRACK_SWITCHING, events["default"].AUDIO_TRACK_SWITCHED, events["default"].BUFFER_CREATED, events["default"].BUFFER_APPENDED, events["default"].BUFFER_FLUSHED) || this;
     _this.fragmentTracker = fragmentTracker;
     _this.config = hls.config;
     _this.audioCodecSwap = false;
@@ -10531,7 +10531,6 @@ var stream_controller_StreamController = /*#__PURE__*/function (_BaseStreamContr
     _this.altAudio = false;
     _this.audioOnly = false;
     _this.bitrateTest = false;
-    _this.initPTS = [];
     return _this;
   }
 
@@ -11371,8 +11370,7 @@ var stream_controller_StreamController = /*#__PURE__*/function (_BaseStreamContr
     if (this.state === State.FRAG_LOADING && fragCurrent && fragLoaded.type === 'main' && fragLoaded.level === fragCurrent.level && fragLoaded.sn === fragCurrent.sn) {
       var stats = data.stats;
       var currentLevel = levels[fragCurrent.level];
-      var details = currentLevel.details;
-      var cc = fragCurrent.cc; // reset frag bitrate test in any case after frag loaded event
+      var details = currentLevel.details; // reset frag bitrate test in any case after frag loaded event
       // if this frag was loaded to perform a bitrate test AND if hls.nextLoadLevel is greater than 0
       // then this means that we should be able to load a fragment at a higher quality level
 
@@ -11419,12 +11417,11 @@ var stream_controller_StreamController = /*#__PURE__*/function (_BaseStreamContr
         var accurateTimeOffset = !(media && media.seeking) && (details.PTSKnown || !details.live);
         var initSegmentData = details.initSegment ? details.initSegment.data : [];
 
-        var audioCodec = this._getAudioCodec(currentLevel);
+        var audioCodec = this._getAudioCodec(currentLevel); // transmux the MPEG-TS data to ISO-BMFF segments
 
-        var initPTS = this.initPTS[cc]; // transmux the MPEG-TS data to ISO-BMFF segments
 
         var demuxer = this.demuxer = this.demuxer || new demux_demuxer(this.hls, 'main');
-        demuxer.push(data.payload, initSegmentData, audioCodec, currentLevel.videoCodec, fragCurrent, details.totalduration, accurateTimeOffset, initPTS);
+        demuxer.push(data.payload, initSegmentData, audioCodec, currentLevel.videoCodec, fragCurrent, details.totalduration, accurateTimeOffset);
       }
     }
 
@@ -11907,18 +11904,6 @@ var stream_controller_StreamController = /*#__PURE__*/function (_BaseStreamContr
     this.state = State.IDLE; // reset reference to frag
 
     this.fragPrevious = null;
-  } // Signal that audio PTS was found
-  ;
-
-  _proto.onInitPtsFound = function onInitPtsFound(data) {
-    var demuxerId = data.id,
-        cc = data.frag.cc,
-        initPTS = data.initPTS;
-
-    if (demuxerId === 'audio') {
-      this.initPTS[cc] = initPTS;
-      logger["logger"].log("InitPTS for cc: " + cc + " found from audio track: " + initPTS);
-    }
   };
 
   _proto.onLevelsUpdated = function onLevelsUpdated(data) {
