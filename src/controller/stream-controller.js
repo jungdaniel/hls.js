@@ -40,7 +40,8 @@ class StreamController extends BaseStreamController {
       Event.AUDIO_TRACK_SWITCHED,
       Event.BUFFER_CREATED,
       Event.BUFFER_APPENDED,
-      Event.BUFFER_FLUSHED);
+      Event.BUFFER_FLUSHED,
+      Event.INIT_PTS_FOUND);
 
     this.fragmentTracker = fragmentTracker;
     this.config = hls.config;
@@ -51,6 +52,7 @@ class StreamController extends BaseStreamController {
     this.altAudio = false;
     this.audioOnly = false;
     this.bitrateTest = false;
+    this.initPTS = [];
   }
 
   startLoad (startPosition) {
@@ -856,6 +858,7 @@ class StreamController extends BaseStreamController {
       const stats = data.stats;
       const currentLevel = levels[fragCurrent.level];
       const details = currentLevel.details;
+      const cc = fragCurrent.cc;
       // reset frag bitrate test in any case after frag loaded event
       // if this frag was loaded to perform a bitrate test AND if hls.nextLoadLevel is greater than 0
       // then this means that we should be able to load a fragment at a higher quality level
@@ -896,6 +899,7 @@ class StreamController extends BaseStreamController {
         const initSegmentData = details.initSegment ? details.initSegment.data : [];
         const audioCodec = this._getAudioCodec(currentLevel);
 
+        let initPTS = this.initPTS[cc];
         // transmux the MPEG-TS data to ISO-BMFF segments
         const demuxer = this.demuxer = this.demuxer || new Demuxer(this.hls, 'main');
         demuxer.push(
@@ -905,7 +909,8 @@ class StreamController extends BaseStreamController {
           currentLevel.videoCodec,
           fragCurrent,
           details.totalduration,
-          accurateTimeOffset
+          accurateTimeOffset,
+          initPTS
         );
       }
     }
@@ -1322,6 +1327,15 @@ class StreamController extends BaseStreamController {
     this.state = State.IDLE;
     // reset reference to frag
     this.fragPrevious = null;
+  }
+
+  // Signal that audio PTS was found
+  onInitPtsFound (data) {
+    let demuxerId = data.id, cc = data.frag.cc, initPTS = data.initPTS;
+    if (demuxerId === 'audio') {
+      this.initPTS[cc] = initPTS;
+      logger.log(`InitPTS for cc: ${cc} found from audio track: ${initPTS}`);
+    }
   }
 
   onLevelsUpdated (data) {
