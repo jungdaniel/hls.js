@@ -18,16 +18,16 @@
         'chunk_11156.m4v', 'chunk_11157.m4v', 'chunk_11158.m4v',
       ],
     };
-​
+
     const v = document.querySelector('video');
-​
+
     function appendBuffer(buffer, data) {
       return new Promise((resolve) => {
         buffer.addEventListener('updateend', resolve, { once : true });
         buffer.appendBuffer(data);
       });
     }
-​
+
     function downloadSegment(url) {
       return fetch(url).then((response) => {
         if (!response.ok) {
@@ -36,31 +36,31 @@
         return response.arrayBuffer();
       });
     }
-​
+
     const mediaSource = new MediaSource();
     mediaSource.addEventListener('sourceopen', async () => {
       const audioBuffer = mediaSource.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
       const videoBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.4d001e"');
-​
+
       await segments.audio.reduce(
         (promise, url) => promise
           .then(() => downloadSegment(url))
           .then(data => appendBuffer(audioBuffer, data)),
         Promise.resolve(),
       );
-​
+
       await segments.video.reduce(
         (promise, url) => promise
           .then(() => downloadSegment(url))
           .then(data => appendBuffer(videoBuffer, data)),
         Promise.resolve(),
       );
-​
+
       mediaSource.endOfStream();
-​
+
       v.currentTime = v.buffered.start(0);
     });
-​
+
     v.setAttribute('src', URL.createObjectURL(mediaSource));
   </script>
 </body>
