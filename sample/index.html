@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+</head>
+<body>
+  <video controls></video>
+  <script>
+    const segments = {
+      audio: [
+        'chunk_11151.m4ah', 'chunk_11151.m4a', 'chunk_11152.m4a',
+        'chunk_11153.m4a', 'chunk_11154.m4a', 'chunk_11155.m4a',
+        'chunk_11156.m4a', 'chunk_11157.m4a', 'chunk_11158.m4a',
+      ],
+      video: [
+        'chunk_11151.m4vh', 'chunk_11151.m4v', 'chunk_11152.m4v',
+        'chunk_11153.m4v', 'chunk_11154.m4v', 'chunk_11155.m4v',
+        'chunk_11156.m4v', 'chunk_11157.m4v', 'chunk_11158.m4v',
+      ],
+    };
+​
+    const v = document.querySelector('video');
+​
+    function appendBuffer(buffer, data) {
+      return new Promise((resolve) => {
+        buffer.addEventListener('updateend', resolve, { once : true });
+        buffer.appendBuffer(data);
+      });
+    }
+​
+    function downloadSegment(url) {
+      return fetch(url).then((response) => {
+        if (!response.ok) {
+          throw new Error('Download error');
+        }
+        return response.arrayBuffer();
+      });
+    }
+​
+    const mediaSource = new MediaSource();
+    mediaSource.addEventListener('sourceopen', async () => {
+      const audioBuffer = mediaSource.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
+      const videoBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.4d001e"');
+​
+      await segments.audio.reduce(
+        (promise, url) => promise
+          .then(() => downloadSegment(url))
+          .then(data => appendBuffer(audioBuffer, data)),
+        Promise.resolve(),
+      );
+​
+      await segments.video.reduce(
+        (promise, url) => promise
+          .then(() => downloadSegment(url))
+          .then(data => appendBuffer(videoBuffer, data)),
+        Promise.resolve(),
+      );
+​
+      mediaSource.endOfStream();
+​
+      v.currentTime = v.buffered.start(0);
+    });
+​
+    v.setAttribute('src', URL.createObjectURL(mediaSource));
+  </script>
+</body>
+</html>
